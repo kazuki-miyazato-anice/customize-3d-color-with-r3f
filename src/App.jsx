@@ -1,45 +1,98 @@
-import { useState } from 'react'
-import logo from './logo.svg'
-import './App.css'
+import React, { Suspense, useRef, useState, useEffect } from "react"
+import { Canvas } from "@react-three/fiber"
+import { ContactShadows, Environment, useGLTF, OrbitControls } from "@react-three/drei"
+import { HexColorPicker } from "react-colorful"
+import { atom } from 'jotai'
+import { useAtomValue, useUpdateAtom } from 'jotai/utils'
 
-function App() {
-  const [count, setCount] = useState(0)
+useGLTF.preload('/old-sportcar.glb')
 
+// Using a Valtio state model to bridge reactivity between
+// the canvas and the dom, both can write to it and/or react to it.
+const currentItemAtom = atom(null)
+const itemColorsAtom = atom({
+  body: "#ffffff",
+  tire: "#ffffff",
+  frame: "#ffffff",
+  glass: "#ffffff",
+  interior: "#ffffff",
+  light: "#ffffff",
+  border: "#ffffff",
+})
+const setColorAtom = atom(
+  (get) => get(itemColorsAtom),
+  (get, set, {name, color}) => {
+    const items = get(itemColorsAtom)
+    items[name] = color
+    set(itemColorsAtom, items)
+  }
+)
+
+function OldSportcar({ ...props }) {
+  const ref = useRef()
+  const setCurrent = useUpdateAtom(currentItemAtom)
+  const items = useAtomValue(itemColorsAtom)
+  const { nodes, materials } = useGLTF('/old-sportcar.glb')
+  // Cursor showing current color
+  const [hovered, onHover] = useState(null)
+  useEffect(() => {
+    const cursor = `<svg width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0)"><path fill="rgba(255, 255, 255, 0.5)" d="M29.5 54C43.031 54 54 43.031 54 29.5S43.031 5 29.5 5 5 15.969 5 29.5 15.969 54 29.5 54z" stroke="#000"/><g filter="url(#filter0_d)"><path d="M29.5 47C39.165 47 47 39.165 47 29.5S39.165 12 29.5 12 12 19.835 12 29.5 19.835 47 29.5 47z" fill="${items[hovered]}"/></g><path d="M2 2l11 2.947L4.947 13 2 2z" fill="#000"/><text fill="#000" style="white-space:pre" font-family="Inter var, sans-serif" font-size="10" letter-spacing="-.01em"><tspan x="35" y="63">${hovered}</tspan></text></g><defs><clipPath id="clip0"><path fill="#fff" d="M0 0h64v64H0z"/></clipPath><filter id="filter0_d" x="6" y="8" width="47" height="47" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset dy="2"/><feGaussianBlur stdDeviation="3"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.15 0"/><feBlend in2="BackgroundImageFix" result="effect1_dropShadow"/><feBlend in="SourceGraphic" in2="effect1_dropShadow" result="shape"/></filter></defs></svg>`
+    const auto = `<svg width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="rgba(255, 255, 255, 0.5)" d="M29.5 54C43.031 54 54 43.031 54 29.5S43.031 5 29.5 5 5 15.969 5 29.5 15.969 54 29.5 54z" stroke="#000"/><path d="M2 2l11 2.947L4.947 13 2 2z" fill="#000"/></svg>`
+    document.body.style.cursor = `url('data:image/svg+xml;base64,${btoa(hovered ? cursor : auto)}'), auto`
+  }, [hovered])
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>Hello Vite + React!</p>
-        <p>
-          <button type="button" onClick={() => setCount((count) => count + 1)}>
-            count is: {count}
-          </button>
-        </p>
-        <p>
-          Edit <code>App.jsx</code> and save to test HMR updates.
-        </p>
-        <p>
-          <a
-            className="App-link"
-            href="https://reactjs.org"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Learn React
-          </a>
-          {' | '}
-          <a
-            className="App-link"
-            href="https://vitejs.dev/guide/features.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Vite Docs
-          </a>
-        </p>
-      </header>
+    <group
+      {...props}
+      ref={ref}
+      dispose={null}
+      onPointerOver={(e) => (e.stopPropagation(), onHover(e.object.material.name))}
+      onPointerOut={(e) => e.intersections.length === 0 && onHover(null)}
+      onPointerMissed={() => setCurrent(null)}
+      onPointerDown={(e) => (e.stopPropagation(), setCurrent(e.object.material.name))}
+    >
+      <group>
+        <mesh geometry={nodes.Cube.geometry} material={materials.body} material-color={items.body} />
+        <mesh geometry={nodes.Cube_1.geometry} material={materials.tire} material-color={items.tire} />
+        <mesh geometry={nodes.Cube_2.geometry} material={materials.frame} material-color={items.frame} />
+        <mesh geometry={nodes.Cube_3.geometry} material={materials.glass} material-color={items.glass} />
+        <mesh geometry={nodes.Cube_4.geometry} material={materials.interior} material-color={items.interior} />
+        <mesh geometry={nodes.Cube_5.geometry} material={materials.light} material-color={items.light} />
+        <mesh geometry={nodes.Cube_6.geometry} material={materials.border} material-color={items.border} />
+      </group>
+    </group>
+  )
+}
+
+function Picker() {
+  const currentItem = useAtomValue(currentItemAtom)
+  const items = useAtomValue(itemColorsAtom)
+  const setColor = useUpdateAtom(setColorAtom)
+  return (
+    <div style={{ display: currentItem ? "block" : "none" }}>
+      <HexColorPicker
+        className="picker"
+        color={items[currentItem]}
+        onChange={(color) => setColor({name: currentItem, color: color})}
+      />
+      <h1>{currentItem}</h1>
     </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <>
+      <Canvas camera={{ position: [0, 0, 10] }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
+        <ambientLight intensity={0.3} />
+        <spotLight intensity={0.3} angle={0.1} penumbra={1} position={[5, 25, 20]} />
+        <Suspense fallback={null}>
+          <OldSportcar position={[0, 0, 0]} scale={[1, 1, 1]} />
+          <Environment files="royal_esplanade_1k.hdr" />
+          <ContactShadows rotation-x={Math.PI / 2} position={[0, -0.8, 0]} opacity={0.25} width={10} height={10} blur={2} far={1} />
+        </Suspense>
+        <OrbitControls minPolarAngle={Math.PI / 2} maxPolarAngle={Math.PI / 2} enablePan={true} enableZoom={true} enableRotate={true} />
+      </Canvas>
+      <Picker />
+    </>
+  )
+}
