@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useState, useEffect } from "react"
 import { Canvas } from "@react-three/fiber"
-import { ContactShadows, Environment, useGLTF, OrbitControls } from "@react-three/drei"
+import { ContactShadows, Environment, useGLTF, OrbitControls, Html, useProgress } from "@react-three/drei"
 import { HexColorPicker } from "react-colorful"
 import { atom } from 'jotai'
 import { useAtomValue, useUpdateAtom } from 'jotai/utils'
@@ -79,13 +79,18 @@ function Picker() {
   )
 }
 
+function Loader() {
+  const { progress } = useProgress()
+  return <Html center>{progress} % loaded</Html>
+}
+
 export default function App() {
   return (
     <>
       <Canvas camera={{ position: [0, 0, 10] }} resize={{ scroll: true, debounce: { scroll: 50, resize: 0 } }}>
         <ambientLight intensity={0.3} />
         <spotLight intensity={0.3} angle={0.1} penumbra={1} position={[5, 25, 20]} />
-        <Suspense fallback={null}>
+        <Suspense fallback={<Loader />}>
           <OldSportcar position={[0, 0, 0]} scale={[1, 1, 1]} />
           <Environment files="royal_esplanade_1k.hdr" />
           <ContactShadows rotation-x={Math.PI / 2} position={[0, -0.8, 0]} opacity={0.25} width={10} height={10} blur={2} far={1} />
